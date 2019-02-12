@@ -87,11 +87,17 @@ class Attention(nn.Module):
         :param decoder_hidden: previous decoder output, a tensor of dimension (batch_size, decoder_dim)
         :return: attention weighted encoding, weights
         """
+        # Given the input's encoded images, generate an attention dimension over the entire image size
         att1 = self.encoder_att(encoder_out)  # (batch_size, num_pixels, attention_dim)
+        # Given the generated sentences' encoded (called decoder) embeddings, generate the attention vector
         att2 = self.decoder_att(decoder_hidden)  # (batch_size, attention_dim)
-        att = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(2)  # (batch_size, num_pixels)
+        # The attention over the entire input image is an activation of the sum of both attentions
+        # In this sense, it learns where to attend in the image based on the input image embedding itself and the decoded sentences
+        att = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(2)  # (batch_size, num_pixels) 
         alpha = self.softmax(att)  # (batch_size, num_pixels)
-        # Weight the final output of encoder by the attention values
+
+        # Finally, generate the final input embedding for current step based on the weighted values from the attention 
+        # In other words, weight the final output of encoder by the attention values
         attention_weighted_encoding = (encoder_out * alpha.unsqueeze(2)).sum(dim=1)  # (batch_size, encoder_dim)
         return attention_weighted_encoding, alpha
 
