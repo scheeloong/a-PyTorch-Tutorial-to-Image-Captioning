@@ -8,7 +8,6 @@ from tqdm import tqdm
 from collections import Counter
 from random import seed, choice, sample
 
-
 def create_input_files(dataset, karpathy_json_path, image_folder, captions_per_image, min_word_freq, output_folder,
                        max_len=100):
     """

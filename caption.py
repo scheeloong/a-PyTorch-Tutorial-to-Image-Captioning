@@ -12,7 +12,6 @@ from PIL import Image
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
 def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=3):
     """
     Reads an image and captions it with beam search.

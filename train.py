@@ -1,14 +1,14 @@
 import time
-import torch.backends.cudnn as cudnn
-import torch.optim
-import torch.utils.data
-import torchvision.transforms as transforms
-from torch import nn
-from torch.nn.utils.rnn import pack_padded_sequence
-from models import Encoder, DecoderWithAttention
+import torch.backends.cudnn as cudnn # Use CUDNN from Nvidia as backend
+import torch.optim # Optimizers available in PyTorch
+import torch.utils.data # Utilities for processing data
+import torchvision.transforms as transforms # Transforming input data
+from torch import nn # neural networks in pytorch
+from torch.nn.utils.rnn import pack_padded_sequence # RNN
+from models import Encoder, DecoderWithAttention # Custom made models 
 from datasets import *
 from utils import *
-from nltk.translate.bleu_score import corpus_bleu
+from nltk.translate.bleu_score import corpus_bleu # BLEU SCORE in NLTK
 
 # Data parameters
 data_folder = '/media/ssd/caption data'  # folder with data files saved by create_input_files.py
@@ -36,7 +36,6 @@ best_bleu4 = 0.  # BLEU-4 score right now
 print_freq = 100  # print training/validation stats every __ batches
 fine_tune_encoder = False  # fine-tune encoder?
 checkpoint = None  # path to checkpoint, None if none
-
 
 def main():
     """

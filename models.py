@@ -4,26 +4,27 @@ import torchvision
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
 class Encoder(nn.Module):
     """
-    Encoder.
+    Encoder model using Neural Network
     """
 
     def __init__(self, encoded_image_size=14):
-        super(Encoder, self).__init__()
-        self.enc_image_size = encoded_image_size
-
+        super(Encoder, self).__init__()  # Extend then neural network
+        self.enc_image_size = encoded_image_size # Size of encoding for image 
+        # Load a pre-trained resnet 
         resnet = torchvision.models.resnet101(pretrained=True)  # pretrained ImageNet ResNet-101
 
         # Remove linear and pool layers (since we're not doing classification)
-        modules = list(resnet.children())[:-2]
-        self.resnet = nn.Sequential(*modules)
-
+        # Get an interator over the children of resnet as a list
+        # Remove the last 2 layers whih are linear and pool to pre-train on new task  
+        modules = list(resnet.children())[:-2] 
+        # Unpack all the models and make them into a sequential (fixed, ordered) model
+        self.resnet = nn.Sequential(*modules) 
         # Resize image to fixed size to allow input images of variable size
         self.adaptive_pool = nn.AdaptiveAvgPool2d((encoded_image_size, encoded_image_size))
-
-        self.fine_tune()
+        # Set to fine-tune the model 
+        self.fine_tune() 
 
     def forward(self, images):
         """
@@ -32,8 +33,11 @@ class Encoder(nn.Module):
         :param images: images, a tensor of dimensions (batch_size, 3, image_size, image_size)
         :return: encoded images
         """
+        # Define the forward pass based o the created layers
         out = self.resnet(images)  # (batch_size, 2048, image_size/32, image_size/32)
         out = self.adaptive_pool(out)  # (batch_size, 2048, encoded_image_size, encoded_image_size)
+        # Re-permute the order to the usual convention of N,H,W,C 
+        # instead of PyTorch's convention of N, C, H, W
         out = out.permute(0, 2, 3, 1)  # (batch_size, encoded_image_size, encoded_image_size, 2048)
         return out
 
@@ -44,18 +48,19 @@ class Encoder(nn.Module):
         :param fine_tune: Allow?
         """
         for p in self.resnet.parameters():
-            p.requires_grad = False
+            p.requires_grad = False # Don't train it if it's part of resnet's parameters
         # If fine-tuning, only fine-tune convolutional blocks 2 through 4
+
+        # For all the later layers of resnet parameters
+        # Set the gradient training to be true
         for c in list(self.resnet.children())[5:]:
             for p in c.parameters():
                 p.requires_grad = fine_tune
-
 
 class Attention(nn.Module):
     """
     Attention Network.
     """
-
     def __init__(self, encoder_dim, decoder_dim, attention_dim):
         """
         :param encoder_dim: feature size of encoded images
@@ -63,10 +68,15 @@ class Attention(nn.Module):
         :param attention_dim: size of the attention network
         """
         super(Attention, self).__init__()
+        # Define the layers
+        # A fully connected layer for encoder and decoder attentions
         self.encoder_att = nn.Linear(encoder_dim, attention_dim)  # linear layer to transform encoded image
         self.decoder_att = nn.Linear(decoder_dim, attention_dim)  # linear layer to transform decoder's output
+        # A fully connected layer for  the attention itself 
         self.full_att = nn.Linear(attention_dim, 1)  # linear layer to calculate values to be softmax-ed
+        # Non-linearity for combining the 2 attention
         self.relu = nn.ReLU()
+        # Softmax to make all attention sum to probabilities
         self.softmax = nn.Softmax(dim=1)  # softmax layer to calculate weights
 
     def forward(self, encoder_out, decoder_hidden):
@@ -81,10 +91,9 @@ class Attention(nn.Module):
         att2 = self.decoder_att(decoder_hidden)  # (batch_size, attention_dim)
         att = self.full_att(self.relu(att1 + att2.unsqueeze(1))).squeeze(2)  # (batch_size, num_pixels)
         alpha = self.softmax(att)  # (batch_size, num_pixels)
+        # Weight the final output of encoder by the attention values
         attention_weighted_encoding = (encoder_out * alpha.unsqueeze(2)).sum(dim=1)  # (batch_size, encoder_dim)
-
         return attention_weighted_encoding, alpha
-
 
 class DecoderWithAttention(nn.Module):
     """
@@ -109,6 +118,7 @@ class DecoderWithAttention(nn.Module):
         self.vocab_size = vocab_size
         self.dropout = dropout
 
+        # Define the attention network within the final model of Decoder with Attention
         self.attention = Attention(encoder_dim, decoder_dim, attention_dim)  # attention network
 
         self.embedding = nn.Embedding(vocab_size, embed_dim)  # embedding layer
